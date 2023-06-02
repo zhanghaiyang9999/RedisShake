@@ -136,12 +136,12 @@ func (ld *Loader) parseRDBEntry(rd *bufio.Reader) {
 			expireSize := structure.ReadLength(rd)
 			log.Infof("RDB resize db. db_size=[%d], expire_size=[%d]", dbSize, expireSize)
 		case kFlagExpireMs:
-			ld.expireMs = int64(structure.ReadUint64(rd)) - time.Now().UnixMilli()
+			ld.expireMs = int64(structure.ReadUint64(rd)) - time.Now().UnixNano()/1000000
 			if ld.expireMs < 0 {
 				ld.expireMs = 1
 			}
 		case kFlagExpire:
-			ld.expireMs = int64(structure.ReadUint32(rd))*1000 - time.Now().UnixMilli()
+			ld.expireMs = int64(structure.ReadUint32(rd))*1000 - time.Now().UnixNano()/1000000
 			if ld.expireMs < 0 {
 				ld.expireMs = 1
 			}
