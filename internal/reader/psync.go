@@ -2,12 +2,12 @@ package reader
 
 import (
 	"bufio"
-	"github.com/alibaba/RedisShake/internal/client"
-	"github.com/alibaba/RedisShake/internal/entry"
-	"github.com/alibaba/RedisShake/internal/log"
-	"github.com/alibaba/RedisShake/internal/rdb"
-	"github.com/alibaba/RedisShake/internal/reader/rotate"
-	"github.com/alibaba/RedisShake/internal/statistics"
+	"github.com/zhanghaiyang9999/RedisShake/internal/client"
+	"github.com/zhanghaiyang9999/RedisShake/internal/entry"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/rdb"
+	"github.com/zhanghaiyang9999/RedisShake/internal/reader/rotate"
+	"github.com/zhanghaiyang9999/RedisShake/internal/statistics"
 	"io"
 	"io/ioutil"
 	"os"

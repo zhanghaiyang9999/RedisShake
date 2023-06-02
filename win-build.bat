@@ -1,0 +1,1 @@
+go build -v -trimpath -o "./bin/redis-shake" "./cmd/redis-shake"

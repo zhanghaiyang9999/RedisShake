@@ -2,8 +2,8 @@ package client
 
 import (
 	"bytes"
-	"github.com/alibaba/RedisShake/internal/client/proto"
-	"github.com/alibaba/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/client/proto"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
 )
 
 func EncodeArgv(argv []string, buf *bytes.Buffer) {

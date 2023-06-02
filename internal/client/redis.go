@@ -3,8 +3,8 @@ package client
 import (
 	"bufio"
 	"crypto/tls"
-	"github.com/alibaba/RedisShake/internal/client/proto"
-	"github.com/alibaba/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/client/proto"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
 	"net"
 	"strconv"
 	"time"

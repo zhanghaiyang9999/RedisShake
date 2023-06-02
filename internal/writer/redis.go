@@ -2,12 +2,12 @@ package writer
 
 import (
 	"bytes"
-	"github.com/alibaba/RedisShake/internal/client"
-	"github.com/alibaba/RedisShake/internal/client/proto"
-	"github.com/alibaba/RedisShake/internal/config"
-	"github.com/alibaba/RedisShake/internal/entry"
-	"github.com/alibaba/RedisShake/internal/log"
-	"github.com/alibaba/RedisShake/internal/statistics"
+	"github.com/zhanghaiyang9999/RedisShake/internal/client"
+	"github.com/zhanghaiyang9999/RedisShake/internal/client/proto"
+	"github.com/zhanghaiyang9999/RedisShake/internal/config"
+	"github.com/zhanghaiyang9999/RedisShake/internal/entry"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/statistics"
 	"strconv"
 	"strings"
 	"sync"

@@ -2,7 +2,7 @@ package structure
 
 import (
 	"encoding/binary"
-	"github.com/alibaba/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
 	"io"
 	"math"
 	"strconv"

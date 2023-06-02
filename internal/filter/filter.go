@@ -1,7 +1,7 @@
 package filter
 
 import (
-	"github.com/alibaba/RedisShake/internal/entry"
+	"github.com/zhanghaiyang9999/RedisShake/internal/entry"
 	lua "github.com/yuin/gopher-lua"
 )
 

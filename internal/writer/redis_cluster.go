@@ -2,9 +2,9 @@ package writer
 
 import (
 	"fmt"
-	"github.com/alibaba/RedisShake/internal/client"
-	"github.com/alibaba/RedisShake/internal/entry"
-	"github.com/alibaba/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/client"
+	"github.com/zhanghaiyang9999/RedisShake/internal/entry"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
 	"strconv"
 	"strings"
 )

@@ -3,8 +3,8 @@ package statistics
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/alibaba/RedisShake/internal/config"
-	"github.com/alibaba/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/config"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
 	"math/bits"
 	"net/http"
 	"strings"

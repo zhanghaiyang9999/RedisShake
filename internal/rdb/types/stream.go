@@ -3,8 +3,8 @@ package types
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/alibaba/RedisShake/internal/log"
-	"github.com/alibaba/RedisShake/internal/rdb/structure"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/rdb/structure"
 	"io"
 	"strconv"
 )

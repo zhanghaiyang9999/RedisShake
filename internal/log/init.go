@@ -2,7 +2,7 @@ package log
 
 import (
 	"fmt"
-	"github.com/alibaba/RedisShake/internal/config"
+	"github.com/zhanghaiyang9999/RedisShake/internal/config"
 	"github.com/rs/zerolog"
 	"os"
 )

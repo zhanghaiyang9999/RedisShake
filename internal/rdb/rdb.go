@@ -4,13 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"github.com/alibaba/RedisShake/internal/config"
-	"github.com/alibaba/RedisShake/internal/entry"
-	"github.com/alibaba/RedisShake/internal/log"
-	"github.com/alibaba/RedisShake/internal/rdb/structure"
-	"github.com/alibaba/RedisShake/internal/rdb/types"
-	"github.com/alibaba/RedisShake/internal/statistics"
-	"github.com/alibaba/RedisShake/internal/utils"
+	"github.com/zhanghaiyang9999/RedisShake/internal/config"
+	"github.com/zhanghaiyang9999/RedisShake/internal/entry"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/rdb/structure"
+	"github.com/zhanghaiyang9999/RedisShake/internal/rdb/types"
+	"github.com/zhanghaiyang9999/RedisShake/internal/statistics"
+	"github.com/zhanghaiyang9999/RedisShake/internal/utils"
 	"io"
 	"os"
 	"strconv"
@@ -32,7 +32,7 @@ const (
 )
 
 type Loader struct {
-	replStreamDbId int // https://github.com/alibaba/RedisShake/pull/430#issuecomment-1099014464
+	replStreamDbId int // https://github.com/zhanghaiyang9999/RedisShake/pull/430#issuecomment-1099014464
 
 	nowDBId  int
 	expireMs int64
@@ -84,7 +84,7 @@ func (ld *Loader) ParseRDB() int {
 	// read entries
 	ld.parseRDBEntry(rd)
 
-	// force update rdb_sent_size for issue: https://github.com/alibaba/RedisShake/issues/485
+	// force update rdb_sent_size for issue: https://github.com/zhanghaiyang9999/RedisShake/issues/485
 	fi, err := os.Stat(ld.filPath)
 	if err != nil {
 		log.Panicf("NewRDBReader: os.Stat error: %s", err.Error())

@@ -2,8 +2,8 @@ package rotate
 
 import (
 	"fmt"
-	"github.com/alibaba/RedisShake/internal/log"
-	"github.com/alibaba/RedisShake/internal/utils"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/utils"
 	"io"
 	"os"
 	"time"

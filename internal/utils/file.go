@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"github.com/alibaba/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
 	"os"
 )
 

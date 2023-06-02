@@ -1,10 +1,10 @@
 package reader
 
 import (
-	"github.com/alibaba/RedisShake/internal/entry"
-	"github.com/alibaba/RedisShake/internal/log"
-	"github.com/alibaba/RedisShake/internal/rdb"
-	"github.com/alibaba/RedisShake/internal/statistics"
+	"github.com/zhanghaiyang9999/RedisShake/internal/entry"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/rdb"
+	"github.com/zhanghaiyang9999/RedisShake/internal/statistics"
 	"os"
 	"path/filepath"
 )

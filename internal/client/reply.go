@@ -1,6 +1,6 @@
 package client
 
-import "github.com/alibaba/RedisShake/internal/log"
+import "github.com/zhanghaiyang9999/RedisShake/internal/log"
 
 func ArrayString(replyInterface interface{}, err error) []string {
 	if err != nil {

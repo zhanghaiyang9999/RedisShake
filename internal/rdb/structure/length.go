@@ -3,7 +3,7 @@ package structure
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/alibaba/RedisShake/internal/log"
+	"github.com/zhanghaiyang9999/RedisShake/internal/log"
 	"io"
 )
 

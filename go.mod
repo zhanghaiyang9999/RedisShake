@@ -1,4 +1,4 @@
-module github.com/alibaba/RedisShake
+module github.com/zhanghaiyang9999/RedisShake
 
 go 1.17
 
