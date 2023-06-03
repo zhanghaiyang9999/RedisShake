@@ -63,6 +63,11 @@ func NewRedisClient(address string, username string, password string, isTls bool
 	return r
 }
 
+func (r *Redis) DoWithReply(args ...string) (interface{}, error) {
+	r.Send(args...)
+	replyInterface, err := r.Receive()	
+	return replyInterface,err
+}
 func (r *Redis) DoWithStringReply(args ...string) string {
 	r.Send(args...)
 
