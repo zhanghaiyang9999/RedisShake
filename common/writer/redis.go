@@ -26,18 +26,19 @@ type redisWriter struct {
 	UpdateUnansweredBytesCount uint64 // have sent in bytes
 }
 
-func NewRedisWriter(address string, username string, password string, isTls bool) Writer {
+func NewRedisWriter(address string, username string, password string, isTls bool) (Writer, error) {
+	var err error
 	rw := new(redisWriter)
-	rw.client = client.NewRedisClient(address, username, password, isTls)
+	rw.client, err = client.NewRedisClient(address, username, password, isTls)
 	log.Infof("redisWriter connected to redis successful. address=[%s]", address)
 	rw.cmdBuffer = new(bytes.Buffer)
 	rw.chWaitReply = make(chan *entry.Entry, config.Config.Advanced.PipelineCountLimit)
 	rw.chWg.Add(1)
 	go rw.flushInterval()
-	return rw
+	return rw, err
 }
 
-func (w *redisWriter) Write(e *entry.Entry) {
+func (w *redisWriter) Write(e *entry.Entry) error {
 	// switch db if we need
 	if w.DbId != e.DbId {
 		w.switchDbTo(e.DbId)
@@ -52,16 +53,20 @@ func (w *redisWriter) Write(e *entry.Entry) {
 	}
 	w.chWaitReply <- e
 	atomic.AddUint64(&w.UpdateUnansweredBytesCount, e.EncodedSize)
-	w.client.SendBytes(w.cmdBuffer.Bytes())
+	return w.client.SendBytes(w.cmdBuffer.Bytes())
 }
 
-func (w *redisWriter) switchDbTo(newDbId int) {
-	w.client.Send("select", strconv.Itoa(newDbId))
+func (w *redisWriter) switchDbTo(newDbId int) error {
+	err := w.client.Send("select", strconv.Itoa(newDbId))
+	if err != nil {
+		return err
+	}
 	w.DbId = newDbId
 	w.chWaitReply <- &entry.Entry{
 		Argv:    []string{"select", strconv.Itoa(newDbId)},
 		CmdName: "select",
 	}
+	return nil
 }
 
 func (w *redisWriter) flushInterval() {
@@ -77,7 +82,7 @@ func (w *redisWriter) flushInterval() {
 					log.Panicf("redisWriter received BUSYKEY reply. argv=%v", e.Argv)
 				}
 			} else {
-				log.Panicf("redisWriter received error. error=[%v], argv=%v, slots=%v, reply=[%v]", err, e.Argv, e.Slots, reply)
+				log.Warnf("redisWriter received error. error=[%v], argv=%v, slots=%v, reply=[%v]", err, e.Argv, e.Slots, reply)
 			}
 		}
 		if strings.EqualFold(e.CmdName, "select") { // skip select command

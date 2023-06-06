@@ -39,8 +39,8 @@ type scanReader struct {
 func NewScanReader(address string, username string, password string, isTls bool) Reader {
 	r := new(scanReader)
 	r.address = address
-	r.clientScan = client.NewRedisClient(address, username, password, isTls)
-	r.clientDump = client.NewRedisClient(address, username, password, isTls)
+	r.clientScan, _ = client.NewRedisClient(address, username, password, isTls)
+	r.clientDump, _ = client.NewRedisClient(address, username, password, isTls)
 	log.Infof("scanReader connected to redis successful. address=[%s]", address)
 
 	r.isCluster = r.IsCluster()
@@ -49,7 +49,7 @@ func NewScanReader(address string, username string, password string, isTls bool)
 
 // IsCluster is for determining whether the server is in cluster mode.
 func (r *scanReader) IsCluster() bool {
-	reply := r.clientScan.DoWithStringReply("INFO", "Cluster")
+	reply, _ := r.clientScan.DoWithStringReply("INFO", "Cluster")
 	return strings.Contains(reply, clusterMode)
 }
 
@@ -69,7 +69,7 @@ func (r *scanReader) scan() {
 	}
 	for dbId := 0; dbId <= scanDbIdUpper; dbId++ {
 		if !r.isCluster {
-			reply := r.clientScan.DoWithStringReply("SELECT", strconv.Itoa(dbId))
+			reply, _ := r.clientScan.DoWithStringReply("SELECT", strconv.Itoa(dbId))
 			if reply != "OK" {
 				log.Panicf("scanReader select db failed. db=[%d]", dbId)
 			}
@@ -81,7 +81,7 @@ func (r *scanReader) scan() {
 		var cursor uint64 = 0
 		for {
 			var keys []string
-			cursor, keys = r.clientScan.Scan(cursor)
+			cursor, keys, _ = r.clientScan.Scan(cursor)
 			for _, key := range keys {
 				r.clientDump.Send("DUMP", key)
 				r.clientDump.Send("PTTL", key)

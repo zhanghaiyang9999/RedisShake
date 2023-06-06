@@ -3,6 +3,7 @@ package client
 import (
 	"bufio"
 	"crypto/tls"
+	"errors"
 	"github.com/zhanghaiyang9999/RedisShake/common/client/proto"
 	"github.com/zhanghaiyang9999/RedisShake/common/log"
 	"net"
@@ -17,7 +18,7 @@ type Redis struct {
 	protoWriter *proto.Writer
 }
 
-func NewRedisClient(address string, username string, password string, isTls bool) *Redis {
+func NewRedisClient(address string, username string, password string, isTls bool) (*Redis, error) {
 	r := new(Redis)
 	var conn net.Conn
 	var dialer net.Dialer
@@ -29,7 +30,7 @@ func NewRedisClient(address string, username string, password string, isTls bool
 		conn, err = dialer.Dial("tcp", address)
 	}
 	if err != nil {
-		log.PanicError(err)
+		return r, err
 	}
 
 	r.reader = bufio.NewReader(conn)
@@ -40,13 +41,14 @@ func NewRedisClient(address string, username string, password string, isTls bool
 	// auth
 	if password != "" {
 		var reply string
+		var err error
 		if username != "" {
-			reply = r.DoWithStringReply("auth", username, password)
+			reply, err = r.DoWithStringReply("auth", username, password)
 		} else {
-			reply = r.DoWithStringReply("auth", password)
+			reply, err = r.DoWithStringReply("auth", password)
 		}
-		if reply != "OK" {
-			log.Panicf("auth failed with reply: %s", reply)
+		if reply != "OK" && err != nil {
+			return r, err
 		}
 		log.Infof("auth successful. address=[%s]", address)
 	} else {
@@ -54,56 +56,59 @@ func NewRedisClient(address string, username string, password string, isTls bool
 	}
 
 	// ping to test connection
-	reply := r.DoWithStringReply("ping")
+	reply, err := r.DoWithStringReply("ping")
 
 	if reply != "PONG" {
-		panic("ping failed with reply: " + reply)
+		return r, err
 	}
 
-	return r
+	return r, nil
 }
 
 func (r *Redis) DoWithReply(args ...string) (interface{}, error) {
-	r.Send(args...)
-	replyInterface, err := r.Receive()	
-	return replyInterface,err
+	err := r.Send(args...)
+	if err != nil {
+		return nil, err
+	}
+	replyInterface, err := r.Receive()
+	return replyInterface, err
 }
-func (r *Redis) DoWithStringReply(args ...string) string {
-	r.Send(args...)
-
+func (r *Redis) DoWithStringReply(args ...string) (string, error) {
+	err := r.Send(args...)
+	if err != nil {
+		return "", err
+	}
 	replyInterface, err := r.Receive()
 	if err != nil {
-		log.PanicError(err)
+		return "", err
 	}
 	reply := replyInterface.(string)
-	return reply
+	return reply, nil
 }
 
-func (r *Redis) Send(args ...string) {
+func (r *Redis) Send(args ...string) error {
 	argsInterface := make([]interface{}, len(args))
 	for inx, item := range args {
 		argsInterface[inx] = item
 	}
 	err := r.protoWriter.WriteArgs(argsInterface)
 	if err != nil {
-		log.PanicError(err)
+		return err
 	}
-	r.flush()
+	return r.flush()
 }
 
-func (r *Redis) SendBytes(buf []byte) {
+func (r *Redis) SendBytes(buf []byte) error {
 	_, err := r.writer.Write(buf)
 	if err != nil {
-		log.PanicError(err)
+		return err
 	}
-	r.flush()
+	return r.flush()
 }
 
-func (r *Redis) flush() {
+func (r *Redis) flush() error {
 	err := r.writer.Flush()
-	if err != nil {
-		log.PanicError(err)
-	}
+	return err
 }
 
 func (r *Redis) Receive() (interface{}, error) {
@@ -121,22 +126,26 @@ func (r *Redis) SetBufioReader(rd *bufio.Reader) {
 
 /* Commands */
 
-func (r *Redis) Scan(cursor uint64) (newCursor uint64, keys []string) {
-	r.Send("scan", strconv.FormatUint(cursor, 10), "count", "2048")
-	reply, err := r.Receive()
+func (r *Redis) Scan(cursor uint64) (newCursor uint64, keys []string, err error) {
+	err = r.Send("scan", strconv.FormatUint(cursor, 10), "count", "2048")
 	if err != nil {
-		log.PanicError(err)
+		return
 	}
-
+	reply, err2 := r.Receive()
+	if err2 != nil {
+		err = err2
+		return
+	}
 	array := reply.([]interface{})
 	if len(array) != 2 {
-		log.Panicf("scan return length error. ret=%v", reply)
+		err = errors.New("reply is invalid")
+		return
 	}
 
 	// cursor
 	newCursor, err = strconv.ParseUint(array[0].(string), 10, 64)
 	if err != nil {
-		log.PanicError(err)
+		return
 	}
 	// keys
 	keys = make([]string, 0)

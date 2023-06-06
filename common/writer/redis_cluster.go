@@ -27,8 +27,8 @@ func NewRedisClusterWriter(address string, username string, password string, isT
 }
 
 func (r *RedisClusterWriter) loadClusterNodes(address string, username string, password string, isTls bool) {
-	client_ := client.NewRedisClient(address, username, password, isTls)
-	reply := client_.DoWithStringReply("cluster", "nodes")
+	client_, _ := client.NewRedisClient(address, username, password, isTls)
+	reply, _ := client_.DoWithStringReply("cluster", "nodes")
 	reply = strings.TrimSpace(reply)
 	for _, line := range strings.Split(reply, "\n") {
 		line = strings.TrimSpace(line)
@@ -55,7 +55,7 @@ func (r *RedisClusterWriter) loadClusterNodes(address string, username string, p
 
 		r.addresses = append(r.addresses, address)
 		// writers
-		redisWriter := NewRedisWriter(address, username, password, isTls)
+		redisWriter, _ := NewRedisWriter(address, username, password, isTls)
 		r.writers = append(r.writers, redisWriter)
 		// parse slots
 		for i := 8; i < len(words); i++ {
@@ -94,12 +94,12 @@ func (r *RedisClusterWriter) loadClusterNodes(address string, username string, p
 	}
 }
 
-func (r *RedisClusterWriter) Write(entry *entry.Entry) {
+func (r *RedisClusterWriter) Write(entry *entry.Entry) error {
 	if len(entry.Slots) == 0 {
 		for _, writer := range r.writers {
 			writer.Write(entry)
 		}
-		return
+		return nil
 	}
 
 	lastSlot := -1
@@ -111,7 +111,7 @@ func (r *RedisClusterWriter) Write(entry *entry.Entry) {
 			log.Panicf("CROSSSLOT Keys in request don't hash to the same slot. argv=%v", entry.Argv)
 		}
 	}
-	r.router[lastSlot].Write(entry)
+	return r.router[lastSlot].Write(entry)
 }
 
 func (r *RedisClusterWriter) Close() {

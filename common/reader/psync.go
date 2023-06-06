@@ -31,7 +31,7 @@ func NewPSyncReader(address string, username string, password string, isTls bool
 	r := new(psyncReader)
 	r.address = address
 	r.elastiCachePSync = ElastiCachePSync
-	r.client = client.NewRedisClient(address, username, password, isTls)
+	r.client, _ = client.NewRedisClient(address, username, password, isTls)
 	r.rd = r.client.BufioReader()
 	log.Infof("psyncReader connected to redis successful. address=[%s]", address)
 	return r
@@ -75,7 +75,7 @@ func (r *psyncReader) saveRDB() {
 	log.Infof("start save RDB. address=[%s]", r.address)
 	argv := []string{"replconf", "listening-port", "10007"} // 10007 is magic number
 	log.Infof("send %v", argv)
-	reply := r.client.DoWithStringReply(argv...)
+	reply, _ := r.client.DoWithStringReply(argv...)
 	if reply != "OK" {
 		log.Warnf("send replconf command to redis server failed. address=[%s], reply=[%s], error=[]", r.address, reply)
 	}

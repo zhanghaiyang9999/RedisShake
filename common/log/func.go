@@ -29,7 +29,7 @@ func Panicf(format string, args ...interface{}) {
 	stack = strings.ReplaceAll(stack, "\n", "  [")
 	logger.Info().Msg(stack)
 
-	//logger.Panic().Msgf(format, args...)
+	logger.Panic().Msgf(format, args...)
 }
 
 func PanicError(err error) {
