@@ -27,14 +27,18 @@ type psyncReader struct {
 	elastiCachePSync string
 }
 
-func NewPSyncReader(address string, username string, password string, isTls bool, ElastiCachePSync string) Reader {
+func NewPSyncReader(address string, username string, password string, isTls bool, ElastiCachePSync string) (Reader, error) {
+	var err error
 	r := new(psyncReader)
 	r.address = address
 	r.elastiCachePSync = ElastiCachePSync
-	r.client, _ = client.NewRedisClient(address, username, password, isTls)
+	r.client, err = client.NewRedisClient(address, username, password, isTls)
+	if err != nil {
+		return r, err
+	}
 	r.rd = r.client.BufioReader()
 	log.Infof("psyncReader connected to redis successful. address=[%s]", address)
-	return r
+	return r, nil
 }
 
 func (r *psyncReader) StartRead() chan *entry.Entry {

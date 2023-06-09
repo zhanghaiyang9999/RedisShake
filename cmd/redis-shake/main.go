@@ -70,7 +70,7 @@ func main() {
 	target := &config.Config.Target
 	switch config.Config.Target.Type {
 	case "standalone":
-		theWriter = writer.NewRedisWriter(target.Address, target.Username, target.Password, target.IsTLS)
+		theWriter, _ = writer.NewRedisWriter(target.Address, target.Username, target.Password, target.IsTLS)
 	case "cluster":
 		theWriter = writer.NewRedisClusterWriter(target.Address, target.Username, target.Password, target.IsTLS)
 	default:
@@ -81,7 +81,7 @@ func main() {
 	source := &config.Config.Source
 	var theReader reader.Reader
 	if config.Config.Type == "sync" {
-		theReader = reader.NewPSyncReader(source.Address, source.Username, source.Password, source.IsTLS, source.ElastiCachePSync)
+		theReader, _ = reader.NewPSyncReader(source.Address, source.Username, source.Password, source.IsTLS, source.ElastiCachePSync)
 	} else if config.Config.Type == "restore" {
 		theReader = reader.NewRDBReader(source.RDBFilePath)
 	} else if config.Config.Type == "scan" {
