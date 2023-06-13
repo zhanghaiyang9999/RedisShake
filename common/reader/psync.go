@@ -2,6 +2,7 @@ package reader
 
 import (
 	"bufio"
+	"errors"
 	"github.com/zhanghaiyang9999/RedisShake/common/client"
 	"github.com/zhanghaiyang9999/RedisShake/common/entry"
 	"github.com/zhanghaiyang9999/RedisShake/common/log"
@@ -25,6 +26,8 @@ type psyncReader struct {
 	rd               *bufio.Reader
 	receivedOffset   int64
 	elastiCachePSync string
+	//rdb file name
+	workFolder string
 }
 
 func NewPSyncReader(address string, username string, password string, isTls bool, ElastiCachePSync string) (Reader, error) {
@@ -40,7 +43,15 @@ func NewPSyncReader(address string, username string, password string, isTls bool
 	log.Infof("psyncReader connected to redis successful. address=[%s]", address)
 	return r, nil
 }
-
+func (r *psyncReader) SetWorkFolder(path string) error {
+	r.workFolder = path
+	//create the folder
+	_, err := os.Stat(path)
+	if err != nil {
+		return os.MkdirAll(path, os.ModePerm)
+	}
+	return nil
+}
 func (r *psyncReader) StartRead() chan *entry.Entry {
 	r.ch = make(chan *entry.Entry, 1024)
 
@@ -59,14 +70,14 @@ func (r *psyncReader) StartRead() chan *entry.Entry {
 }
 
 func (r *psyncReader) clearDir() {
-	files, err := ioutil.ReadDir("./")
+	files, err := ioutil.ReadDir(r.workFolder)
 	if err != nil {
 		log.PanicError(err)
 	}
 
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".rdb") || strings.HasSuffix(f.Name(), ".aof") {
-			err = os.Remove(f.Name())
+			err = os.Remove(r.workFolder + "/" + f.Name())
 			if err != nil {
 				log.PanicError(err)
 			}
@@ -75,7 +86,7 @@ func (r *psyncReader) clearDir() {
 	}
 }
 
-func (r *psyncReader) saveRDB() {
+func (r *psyncReader) saveRDB() error {
 	log.Infof("start save RDB. address=[%s]", r.address)
 	argv := []string{"replconf", "listening-port", "10007"} // 10007 is magic number
 	log.Infof("send %v", argv)
@@ -104,25 +115,25 @@ func (r *psyncReader) saveRDB() {
 		if b == '-' {
 			reply, err := r.rd.ReadString('\n')
 			if err != nil {
-				log.PanicError(err)
+				return err
 			}
 			reply = strings.TrimSpace(reply)
-			log.Panicf("psync error. address=[%s], reply=[%s]", r.address, reply)
+			return errors.New(reply)
 		}
 		if b != '+' {
-			log.Panicf("invalid psync reply. address=[%s], b=[%s]", r.address, string(b))
+			return errors.New("invalid rdb format:" + string(b))
 		}
 		break
 	}
 	reply, err := r.rd.ReadString('\n')
 	if err != nil {
-		log.PanicError(err)
+		return err
 	}
 	reply = strings.TrimSpace(reply)
 	log.Infof("receive [%s]", reply)
 	masterOffset, err := strconv.Atoi(strings.Split(reply, " ")[2])
 	if err != nil {
-		log.PanicError(err)
+		return err
 	}
 	r.receivedOffset = int64(masterOffset)
 
@@ -135,13 +146,13 @@ func (r *psyncReader) saveRDB() {
 		// \n\n\n$
 		b, err := r.rd.ReadByte()
 		if err != nil {
-			log.PanicError(err)
+			return err
 		}
 		if b == '\n' {
 			continue
 		}
 		if b != '$' {
-			log.Panicf("invalid rdb format. address=[%s], b=[%s]", r.address, string(b))
+			return errors.New("invalid rdb format:" + string(b))
 		}
 		break
 	}
@@ -149,22 +160,23 @@ func (r *psyncReader) saveRDB() {
 	log.Infof("source db bgsave finished. timeUsed=[%.2f]s, address=[%s]", time.Since(timeStart).Seconds(), r.address)
 	lengthStr, err := r.rd.ReadString('\n')
 	if err != nil {
-		log.PanicError(err)
+		return err
 	}
 	lengthStr = strings.TrimSpace(lengthStr)
 	length, err := strconv.ParseInt(lengthStr, 10, 64)
 	if err != nil {
-		log.PanicError(err)
+		return err
 	}
 	log.Infof("received rdb length. length=[%d]", length)
 	statistics.SetRDBFileSize(uint64(length))
 
 	// create rdb file
-	rdbFilePath := "dump.rdb"
+	rdbFilePath := r.workFolder + "/dump.rdb"
+
 	log.Infof("create dump.rdb file. filename_path=[%s]", rdbFilePath)
 	rdbFileHandle, err := os.OpenFile(rdbFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		log.PanicError(err)
+		return err
 	}
 
 	// read rdb
@@ -178,26 +190,29 @@ func (r *psyncReader) saveRDB() {
 		}
 		n, err := r.rd.Read(buf[:readOnce])
 		if err != nil {
-			log.PanicError(err)
+			rdbFileHandle.Close()
+			return err
 		}
 		remainder -= int64(n)
 		statistics.UpdateRDBReceivedSize(uint64(length - remainder))
 		_, err = rdbFileHandle.Write(buf[:n])
 		if err != nil {
-			log.PanicError(err)
+			rdbFileHandle.Close()
+			return err
 		}
 	}
 	err = rdbFileHandle.Close()
 	if err != nil {
-		log.PanicError(err)
+		return err
 	}
 	log.Infof("save RDB finished. address=[%s], total_bytes=[%d]", r.address, length)
+	return nil
 }
 
 func (r *psyncReader) saveAOF(rd io.Reader) {
 	log.Infof("start save AOF. address=[%s]", r.address)
 	// create aof file
-	aofWriter := rotate.NewAOFWriter(r.receivedOffset)
+	aofWriter := rotate.NewAOFWriter(r.workFolder, r.receivedOffset)
 	defer aofWriter.Close()
 	buf := make([]byte, 16*1024) // 16KB is enough for writing file
 	for {
@@ -214,13 +229,14 @@ func (r *psyncReader) saveAOF(rd io.Reader) {
 func (r *psyncReader) sendRDB() {
 	// start parse rdb
 	log.Infof("start send RDB. address=[%s]", r.address)
-	rdbLoader := rdb.NewLoader("dump.rdb", r.ch)
+	rdbFilePath := r.workFolder + "/dump.rdb"
+	rdbLoader := rdb.NewLoader(rdbFilePath, r.ch)
 	r.DbId = rdbLoader.ParseRDB()
 	log.Infof("send RDB finished. address=[%s], repl-stream-db=[%d]", r.address, r.DbId)
 }
 
 func (r *psyncReader) sendAOF(offset int64) {
-	aofReader := rotate.NewAOFReader(offset)
+	aofReader := rotate.NewAOFReader(r.workFolder, offset)
 	defer aofReader.Close()
 	r.client.SetBufioReader(bufio.NewReader(aofReader))
 	for {

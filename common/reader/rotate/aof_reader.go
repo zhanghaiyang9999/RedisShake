@@ -13,17 +13,19 @@ type AOFReader struct {
 	file     *os.File
 	offset   int64
 	pos      int64
+	folder   string
 	filename string
 }
 
-func NewAOFReader(offset int64) *AOFReader {
+func NewAOFReader(folder string, offset int64) *AOFReader {
 	r := new(AOFReader)
+	r.folder = folder
 	r.openFile(offset)
 	return r
 }
 
 func (r *AOFReader) openFile(offset int64) {
-	r.filename = fmt.Sprintf("%d.aof", offset)
+	r.filename = fmt.Sprintf("%s/%d.aof", r.folder, offset)
 	var err error
 	r.file, err = os.OpenFile(r.filename, os.O_RDONLY, 0644)
 	if err != nil {

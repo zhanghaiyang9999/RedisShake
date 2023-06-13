@@ -25,7 +25,9 @@ func NewRDBReader(path string) Reader {
 	r.path = absolutePath
 	return r
 }
-
+func (r *rdbReader) SetWorkFolder(path string) error {
+	return nil
+}
 func (r *rdbReader) StartRead() chan *entry.Entry {
 	r.ch = make(chan *entry.Entry, 1024)
 

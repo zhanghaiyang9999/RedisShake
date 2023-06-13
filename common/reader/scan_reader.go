@@ -52,7 +52,9 @@ func (r *scanReader) IsCluster() bool {
 	reply, _ := r.clientScan.DoWithStringReply("INFO", "Cluster")
 	return strings.Contains(reply, clusterMode)
 }
-
+func (r *scanReader) SetWorkFolder(path string) error {
+	return nil
+}
 func (r *scanReader) StartRead() chan *entry.Entry {
 	r.ch = make(chan *entry.Entry, 1024)
 	r.innerChannel = make(chan *dbKey, 1024)

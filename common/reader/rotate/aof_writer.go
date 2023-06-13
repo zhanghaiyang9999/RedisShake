@@ -11,18 +11,20 @@ const MaxFileSize = 1024 * 1024 * 1024 // 1G
 type AOFWriter struct {
 	file     *os.File
 	offset   int64
+	folder   string
 	filename string
 	filesize int64
 }
 
-func NewAOFWriter(offset int64) *AOFWriter {
+func NewAOFWriter(folder string, offset int64) *AOFWriter {
 	w := &AOFWriter{}
+	w.folder = folder
 	w.openFile(offset)
 	return w
 }
 
 func (w *AOFWriter) openFile(offset int64) {
-	w.filename = fmt.Sprintf("%d.aof", offset)
+	w.filename = fmt.Sprintf("%s/%d.aof", w.folder, offset)
 	var err error
 	w.file, err = os.OpenFile(w.filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
