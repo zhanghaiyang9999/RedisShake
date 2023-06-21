@@ -115,6 +115,8 @@ func (ld *Loader) parseRDBEntry(rd *bufio.Reader) {
 	for true {
 		if ld.notifier != nil {
 			if ld.notifier.IsStopped() {
+				e := entry.NewEntry()
+				ld.ch <- e
 				return
 			}
 		}

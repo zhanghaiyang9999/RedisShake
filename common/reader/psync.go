@@ -256,6 +256,8 @@ func (r *psyncReader) sendAOF(offset int64) {
 	r.client.SetBufioReader(bufio.NewReader(aofReader))
 	for {
 		if r.notifier.IsStopped() {
+			e := entry.NewEntry()
+			r.ch <- e
 			break
 		}
 		argv := client.ArrayString(r.client.Receive())
