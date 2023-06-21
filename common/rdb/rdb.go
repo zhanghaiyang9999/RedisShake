@@ -31,6 +31,10 @@ const (
 	kEOF           = 0xff // End of the RDB file.
 )
 
+type ReadNotifier interface {
+	Notify(name string, a ...interface{})
+	IsStopped() bool
+}
 type Loader struct {
 	replStreamDbId int // https://github.com/zhanghaiyang9999/RedisShake/pull/430#issuecomment-1099014464
 
@@ -44,11 +48,13 @@ type Loader struct {
 
 	ch         chan *entry.Entry
 	dumpBuffer bytes.Buffer
+	notifier   ReadNotifier
 }
 
-func NewLoader(filPath string, ch chan *entry.Entry) *Loader {
+func NewLoader(filPath string, ch chan *entry.Entry, notifier ReadNotifier) *Loader {
 	ld := new(Loader)
 	ld.ch = ch
+	ld.notifier = notifier
 	ld.filPath = filPath
 	return ld
 }
@@ -57,7 +63,8 @@ func (ld *Loader) ParseRDB() int {
 	var err error
 	ld.fp, err = os.OpenFile(ld.filPath, os.O_RDONLY, 0666)
 	if err != nil {
-		log.Panicf("open file failed. file_path=[%s], error=[%s]", ld.filPath, err)
+		return 0
+		//log.Panicf("open file failed. file_path=[%s], error=[%s]", ld.filPath, err)
 	}
 	defer func() {
 		err = ld.fp.Close()
@@ -106,6 +113,11 @@ func (ld *Loader) parseRDBEntry(rd *bufio.Reader) {
 	// read one entry
 	tick := time.Tick(time.Second * 1)
 	for true {
+		if ld.notifier != nil {
+			if ld.notifier.IsStopped() {
+				return
+			}
+		}
 		typeByte := structure.ReadByte(rd)
 		switch typeByte {
 		case kFlagIdle:

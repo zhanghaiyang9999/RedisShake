@@ -8,6 +8,7 @@ import (
 	"github.com/zhanghaiyang9999/RedisShake/common/client/proto"
 	"github.com/zhanghaiyang9999/RedisShake/common/entry"
 	"github.com/zhanghaiyang9999/RedisShake/common/log"
+	"github.com/zhanghaiyang9999/RedisShake/common/rdb"
 	"github.com/zhanghaiyang9999/RedisShake/common/statistics"
 )
 
@@ -55,7 +56,7 @@ func (r *scanReader) IsCluster() bool {
 func (r *scanReader) SetWorkFolder(path string) error {
 	return nil
 }
-func (r *scanReader) StartRead() chan *entry.Entry {
+func (r *scanReader) StartRead(notifier rdb.ReadNotifier) chan *entry.Entry {
 	r.ch = make(chan *entry.Entry, 1024)
 	r.innerChannel = make(chan *dbKey, 1024)
 	go r.scan()

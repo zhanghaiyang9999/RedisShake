@@ -28,6 +28,7 @@ type psyncReader struct {
 	elastiCachePSync string
 	//rdb file name
 	workFolder string
+	notifier   rdb.ReadNotifier
 }
 
 func NewPSyncReader(address string, username string, password string, isTls bool, ElastiCachePSync string) (Reader, error) {
@@ -52,9 +53,9 @@ func (r *psyncReader) SetWorkFolder(path string) error {
 	}
 	return nil
 }
-func (r *psyncReader) StartRead() chan *entry.Entry {
+func (r *psyncReader) StartRead(notifier rdb.ReadNotifier) chan *entry.Entry {
 	r.ch = make(chan *entry.Entry, 1024)
-
+	r.notifier = notifier
 	go func() {
 		r.clearDir()
 		go r.sendReplconfAck()
@@ -104,6 +105,9 @@ func (r *psyncReader) saveRDB() error {
 	log.Infof("send %v", argv)
 	// format: \n\n\n$<reply>\r\n
 	for true {
+		if r.notifier.IsStopped() {
+			break
+		}
 		// \n\n\n$
 		b, err := r.rd.ReadByte()
 		if err != nil {
@@ -143,6 +147,9 @@ func (r *psyncReader) saveRDB() error {
 	timeStart := time.Now()
 	// format: \n\n\n$<length>\r\n<rdb>
 	for true {
+		if r.notifier.IsStopped() {
+			break
+		}
 		// \n\n\n$
 		b, err := r.rd.ReadByte()
 		if err != nil {
@@ -184,6 +191,9 @@ func (r *psyncReader) saveRDB() error {
 	const bufSize int64 = 32 * 1024 * 1024 // 32MB
 	buf := make([]byte, bufSize)
 	for remainder != 0 {
+		if r.notifier.IsStopped() {
+			break
+		}
 		readOnce := bufSize
 		if remainder < readOnce {
 			readOnce = remainder
@@ -209,7 +219,7 @@ func (r *psyncReader) saveRDB() error {
 	return nil
 }
 
-func (r *psyncReader) saveAOF(rd io.Reader) {
+func (r *psyncReader) saveAOF(rd io.Reader) error {
 	log.Infof("start save AOF. address=[%s]", r.address)
 	// create aof file
 	aofWriter := rotate.NewAOFWriter(r.workFolder, r.receivedOffset)
@@ -218,7 +228,7 @@ func (r *psyncReader) saveAOF(rd io.Reader) {
 	for {
 		n, err := rd.Read(buf)
 		if err != nil {
-			log.PanicError(err)
+			return err
 		}
 		r.receivedOffset += int64(n)
 		statistics.UpdateAOFReceivedOffset(uint64(r.receivedOffset))
@@ -230,8 +240,13 @@ func (r *psyncReader) sendRDB() {
 	// start parse rdb
 	log.Infof("start send RDB. address=[%s]", r.address)
 	rdbFilePath := r.workFolder + "/dump.rdb"
-	rdbLoader := rdb.NewLoader(rdbFilePath, r.ch)
+	rdbLoader := rdb.NewLoader(rdbFilePath, r.ch, r.notifier)
 	r.DbId = rdbLoader.ParseRDB()
+	//remove the rdb file
+	os.Remove(rdbFilePath)
+	if r.notifier != nil {
+		r.notifier.Notify("sync", 100)
+	}
 	log.Infof("send RDB finished. address=[%s], repl-stream-db=[%d]", r.address, r.DbId)
 }
 
@@ -240,6 +255,9 @@ func (r *psyncReader) sendAOF(offset int64) {
 	defer aofReader.Close()
 	r.client.SetBufioReader(bufio.NewReader(aofReader))
 	for {
+		if r.notifier.IsStopped() {
+			break
+		}
 		argv := client.ArrayString(r.client.Receive())
 		// select
 		if strings.EqualFold(argv[0], "select") {

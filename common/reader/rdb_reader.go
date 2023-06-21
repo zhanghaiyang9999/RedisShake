@@ -28,7 +28,7 @@ func NewRDBReader(path string) Reader {
 func (r *rdbReader) SetWorkFolder(path string) error {
 	return nil
 }
-func (r *rdbReader) StartRead() chan *entry.Entry {
+func (r *rdbReader) StartRead(notifier rdb.ReadNotifier) chan *entry.Entry {
 	r.ch = make(chan *entry.Entry, 1024)
 
 	go func() {
@@ -40,7 +40,7 @@ func (r *rdbReader) StartRead() chan *entry.Entry {
 		}
 		statistics.Metrics.RdbFileSize = uint64(fi.Size())
 		statistics.Metrics.RdbReceivedSize = uint64(fi.Size())
-		rdbLoader := rdb.NewLoader(r.path, r.ch)
+		rdbLoader := rdb.NewLoader(r.path, r.ch, notifier)
 		_ = rdbLoader.ParseRDB()
 		log.Infof("send RDB finished. path=[%s]", r.path)
 		close(r.ch)
