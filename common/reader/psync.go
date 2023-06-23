@@ -226,6 +226,9 @@ func (r *psyncReader) saveAOF(rd io.Reader) error {
 	defer aofWriter.Close()
 	buf := make([]byte, 16*1024) // 16KB is enough for writing file
 	for {
+		if r.notifier.IsStopped() {
+			break
+		}
 		n, err := rd.Read(buf)
 		if err != nil {
 			return err
@@ -234,6 +237,7 @@ func (r *psyncReader) saveAOF(rd io.Reader) error {
 		statistics.UpdateAOFReceivedOffset(uint64(r.receivedOffset))
 		aofWriter.Write(buf[:n])
 	}
+	return nil
 }
 
 func (r *psyncReader) sendRDB() {
@@ -251,6 +255,9 @@ func (r *psyncReader) sendRDB() {
 }
 
 func (r *psyncReader) sendAOF(offset int64) {
+	if r.notifier.IsStopped() {
+		return
+	}
 	aofReader := rotate.NewAOFReader(r.workFolder, offset)
 	defer aofReader.Close()
 	r.client.SetBufioReader(bufio.NewReader(aofReader))
