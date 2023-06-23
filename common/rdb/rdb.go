@@ -108,6 +108,9 @@ func (ld *Loader) parseRDBEntry(rd *bufio.Reader) {
 			log.PanicError(err)
 		}
 		statistics.UpdateRDBSentSize(uint64(offset))
+		if ld.notifier != nil {
+			ld.notifier.Notify("sentsize", offset)
+		}
 	}
 	defer UpdateRDBSentSize()
 	// read one entry

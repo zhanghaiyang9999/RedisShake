@@ -176,7 +176,9 @@ func (r *psyncReader) saveRDB() error {
 	}
 	log.Infof("received rdb length. length=[%d]", length)
 	statistics.SetRDBFileSize(uint64(length))
-
+	if r.notifier != nil {
+		r.notifier.Notify("dbsize", length)
+	}
 	// create rdb file
 	rdbFilePath := r.workFolder + "/dump.rdb"
 
