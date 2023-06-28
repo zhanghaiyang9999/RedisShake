@@ -35,6 +35,7 @@ type scanReader struct {
 	clientDump     *client.Redis
 	clientDumpDbid int
 	ch             chan *entry.Entry
+	notifier       rdb.ReadNotifier
 }
 
 func NewScanReader(address string, username string, password string, isTls bool) Reader {
@@ -53,12 +54,16 @@ func (r *scanReader) IsCluster() bool {
 	reply, _ := r.clientScan.DoWithStringReply("INFO", "Cluster")
 	return strings.Contains(reply, clusterMode)
 }
+func (r *scanReader) DoWithReply(args ...string) (interface{}, error) {
+	return r.clientScan.DoWithReply(args...)
+}
 func (r *scanReader) SetWorkFolder(path string) error {
 	return nil
 }
 func (r *scanReader) StartRead(notifier rdb.ReadNotifier) chan *entry.Entry {
 	r.ch = make(chan *entry.Entry, 1024)
 	r.innerChannel = make(chan *dbKey, 1024)
+	r.notifier = notifier
 	go r.scan()
 	go r.fetch()
 	return r.ch
@@ -71,6 +76,9 @@ func (r *scanReader) scan() {
 		scanDbIdUpper = 0
 	}
 	for dbId := 0; dbId <= scanDbIdUpper; dbId++ {
+		if r.notifier.IsStopped() {
+			break
+		}
 		if !r.isCluster {
 			reply, _ := r.clientScan.DoWithStringReply("SELECT", strconv.Itoa(dbId))
 			if reply != "OK" {
@@ -145,4 +153,7 @@ func (r *scanReader) fetch() {
 	}
 	log.Infof("scanReader fetch finished. address=[%s]", r.address)
 	close(r.ch)
+	if r.notifier != nil {
+		r.notifier.Notify("sync", 100)
+	}
 }

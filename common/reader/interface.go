@@ -6,4 +6,5 @@ import "github.com/zhanghaiyang9999/RedisShake/common/rdb"
 type Reader interface {
 	StartRead(notifier rdb.ReadNotifier) chan *entry.Entry
 	SetWorkFolder(path string) error
+	DoWithReply(args ...string) (interface{}, error)
 }

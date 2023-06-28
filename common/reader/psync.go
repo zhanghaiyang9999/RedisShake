@@ -44,6 +44,9 @@ func NewPSyncReader(address string, username string, password string, isTls bool
 	log.Infof("psyncReader connected to redis successful. address=[%s]", address)
 	return r, nil
 }
+func (r *psyncReader) DoWithReply(args ...string) (interface{}, error) {
+	return r.client.DoWithReply(args...)
+}
 func (r *psyncReader) SetWorkFolder(path string) error {
 	r.workFolder = path
 	//create the folder

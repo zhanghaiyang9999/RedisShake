@@ -15,6 +15,15 @@ import (
 	"runtime"
 )
 
+type testNotifier struct {
+}
+
+func (t *testNotifier) Notify(name string, a ...interface{}) {
+	fmt.Println(name)
+}
+func (t *testNotifier) IsStopped() bool {
+	return true
+}
 func main() {
 	if len(os.Args) < 2 || len(os.Args) > 3 {
 		fmt.Println("Usage: redis-shake <config file> <filter file>")
@@ -89,7 +98,8 @@ func main() {
 	} else {
 		log.Panicf("unknown source type: %s", config.Config.Type)
 	}
-	ch := theReader.StartRead()
+	testno := &testNotifier{}
+	ch := theReader.StartRead(testno)
 
 	// start sync
 	statistics.Init()

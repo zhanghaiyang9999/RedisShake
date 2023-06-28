@@ -28,6 +28,9 @@ func NewRDBReader(path string) Reader {
 func (r *rdbReader) SetWorkFolder(path string) error {
 	return nil
 }
+func (r *rdbReader) DoWithReply(args ...string) (interface{}, error) {
+	return nil, nil
+}
 func (r *rdbReader) StartRead(notifier rdb.ReadNotifier) chan *entry.Entry {
 	r.ch = make(chan *entry.Entry, 1024)
 
