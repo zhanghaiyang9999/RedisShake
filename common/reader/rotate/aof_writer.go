@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-const MaxFileSize = 1024 * 1024 * 1024 // 1G
+const MaxFileSize = 1024 * 1024 * 100 // 1G
 
 type AOFWriter struct {
 	file     *os.File

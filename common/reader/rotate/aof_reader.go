@@ -37,7 +37,7 @@ func (r *AOFReader) openFile(offset int64) {
 }
 
 func (r *AOFReader) readNextFile(offset int64) {
-	filename := fmt.Sprintf("%d.aof", offset)
+	filename := fmt.Sprintf("%s/%d.aof", r.folder, offset)
 	if utils.DoesFileExist(filename) {
 		r.Close()
 		err := os.Remove(r.filename)
@@ -50,8 +50,9 @@ func (r *AOFReader) readNextFile(offset int64) {
 
 func (r *AOFReader) Read(buf []byte) (n int, err error) {
 	n, err = r.file.Read(buf)
+	filename := fmt.Sprintf("%s/%d.aof", r.folder, r.offset)
 	for err == io.EOF {
-		if r.filename != fmt.Sprintf("%d.aof", r.offset) {
+		if r.filename != filename {
 			r.readNextFile(r.offset)
 		}
 		time.Sleep(time.Millisecond * 10)
