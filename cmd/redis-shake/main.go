@@ -22,7 +22,7 @@ func (t *testNotifier) Notify(name string, a ...interface{}) {
 	fmt.Println(name)
 }
 func (t *testNotifier) IsStopped() bool {
-	return true
+	return false
 }
 func main() {
 	if len(os.Args) < 2 || len(os.Args) > 3 {
@@ -98,6 +98,7 @@ func main() {
 	} else {
 		log.Panicf("unknown source type: %s", config.Config.Type)
 	}
+	theReader.SetWorkFolder("./data")
 	testno := &testNotifier{}
 	ch := theReader.StartRead(testno)
 

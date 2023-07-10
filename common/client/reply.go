@@ -2,16 +2,16 @@ package client
 
 import "github.com/zhanghaiyang9999/RedisShake/common/log"
 
-func ArrayString(replyInterface interface{}, err error) []string {
+func ArrayString(replyInterface interface{}, err error) ([]string, error) {
 	if err != nil {
-		log.PanicError(err)
+		return make([]string, 1), err
 	}
 	replyArray := replyInterface.([]interface{})
 	replyArrayString := make([]string, len(replyArray))
 	for inx, item := range replyArray {
 		replyArrayString[inx] = item.(string)
 	}
-	return replyArrayString
+	return replyArrayString, nil
 }
 
 func String(reply interface{}, err error) (string, error) {

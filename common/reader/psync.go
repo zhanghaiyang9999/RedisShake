@@ -263,7 +263,7 @@ func (r *psyncReader) sendAOF(offset int64) {
 	if r.notifier.IsStopped() {
 		return
 	}
-	aofReader := rotate.NewAOFReader(r.workFolder, offset)
+	aofReader := rotate.NewAOFReader(r.workFolder, offset, r.notifier)
 	defer aofReader.Close()
 	r.client.SetBufioReader(bufio.NewReader(aofReader))
 	for {
@@ -272,7 +272,12 @@ func (r *psyncReader) sendAOF(offset int64) {
 			r.ch <- e
 			break
 		}
-		argv := client.ArrayString(r.client.Receive())
+		argv, err := client.ArrayString(r.client.Receive())
+		if err != nil {
+			e := entry.NewEntry()
+			r.ch <- e
+			break
+		}
 		// select
 		if strings.EqualFold(argv[0], "select") {
 			DbId, err := strconv.Atoi(argv[1])

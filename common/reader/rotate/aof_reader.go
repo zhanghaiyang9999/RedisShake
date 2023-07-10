@@ -3,6 +3,7 @@ package rotate
 import (
 	"fmt"
 	"github.com/zhanghaiyang9999/RedisShake/common/log"
+	"github.com/zhanghaiyang9999/RedisShake/common/rdb"
 	"github.com/zhanghaiyang9999/RedisShake/common/utils"
 	"io"
 	"os"
@@ -15,12 +16,14 @@ type AOFReader struct {
 	pos      int64
 	folder   string
 	filename string
+	notifier rdb.ReadNotifier
 }
 
-func NewAOFReader(folder string, offset int64) *AOFReader {
+func NewAOFReader(folder string, offset int64, notifier rdb.ReadNotifier) *AOFReader {
 	r := new(AOFReader)
 	r.folder = folder
 	r.openFile(offset)
+	r.notifier = notifier
 	return r
 }
 
@@ -52,6 +55,9 @@ func (r *AOFReader) Read(buf []byte) (n int, err error) {
 	n, err = r.file.Read(buf)
 	filename := fmt.Sprintf("%s/%d.aof", r.folder, r.offset)
 	for err == io.EOF {
+		if r.notifier.IsStopped() {
+			break
+		}
 		if r.filename != filename {
 			r.readNextFile(r.offset)
 		}
@@ -62,12 +68,10 @@ func (r *AOFReader) Read(buf []byte) (n int, err error) {
 		}
 		n, err = r.file.Read(buf)
 	}
-	if err != nil {
-		log.PanicError(err)
-	}
+
 	r.offset += int64(n)
 	r.pos += int64(n)
-	return n, nil
+	return n, err
 }
 
 func (r *AOFReader) Offset() int64 {

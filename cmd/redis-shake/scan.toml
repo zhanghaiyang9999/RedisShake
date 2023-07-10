@@ -1,10 +1,10 @@
-type = "scan"
+type = "sync"
 
 [source]
 version = 5.0 # redis version, such as 2.8, 4.0, 5.0, 6.0, 6.2, 7.0, ...
 address = "10.20.50.91:6379"
 username = "" # keep empty if not using ACL
-password = "caworld.20080428" # keep empty if no authentication is required
+password = "caworld" # keep empty if no authentication is required
 tls = false
 
 [target]
@@ -14,7 +14,7 @@ version = 5.0 # redis version, such as 2.8, 4.0, 5.0, 6.0, 6.2, 7.0, ...
 # redis-shake will obtain other nodes through the `cluster nodes` command.
 address = "10.20.50.154:6379"
 username = "" # keep empty if not using ACL
-password = "caworld.20080428" # keep empty if no authentication is required
+password = "caworld" # keep empty if no authentication is required
 tls = false
 
 [advanced]
