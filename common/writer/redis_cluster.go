@@ -55,7 +55,7 @@ func (r *RedisClusterWriter) loadClusterNodes(address string, username string, p
 
 		r.addresses = append(r.addresses, address)
 		// writers
-		redisWriter, _ := NewRedisWriter(address, username, password, isTls)
+		redisWriter, _ := NewRedisWriter(address, username, password, isTls, nil)
 		r.writers = append(r.writers, redisWriter)
 		// parse slots
 		for i := 8; i < len(words); i++ {

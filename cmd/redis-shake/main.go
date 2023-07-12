@@ -79,7 +79,7 @@ func main() {
 	target := &config.Config.Target
 	switch config.Config.Target.Type {
 	case "standalone":
-		theWriter, _ = writer.NewRedisWriter(target.Address, target.Username, target.Password, target.IsTLS)
+		theWriter, _ = writer.NewRedisWriter(target.Address, target.Username, target.Password, target.IsTLS, nil)
 	case "cluster":
 		theWriter = writer.NewRedisClusterWriter(target.Address, target.Username, target.Password, target.IsTLS)
 	default:

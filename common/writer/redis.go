@@ -7,6 +7,7 @@ import (
 	"github.com/zhanghaiyang9999/RedisShake/common/config"
 	"github.com/zhanghaiyang9999/RedisShake/common/entry"
 	"github.com/zhanghaiyang9999/RedisShake/common/log"
+	"github.com/zhanghaiyang9999/RedisShake/common/rdb"
 	"github.com/zhanghaiyang9999/RedisShake/common/statistics"
 	"strconv"
 	"strings"
@@ -19,16 +20,17 @@ type redisWriter struct {
 	client *client.Redis
 	DbId   int
 
-	cmdBuffer   *bytes.Buffer
-	chWaitReply chan *entry.Entry
-	chWg        sync.WaitGroup
-
+	cmdBuffer                  *bytes.Buffer
+	chWaitReply                chan *entry.Entry
+	chWg                       sync.WaitGroup
+	notifier                   rdb.ReadNotifier
 	UpdateUnansweredBytesCount uint64 // have sent in bytes
 }
 
-func NewRedisWriter(address string, username string, password string, isTls bool) (Writer, error) {
+func NewRedisWriter(address string, username string, password string, isTls bool, notifier rdb.ReadNotifier) (Writer, error) {
 	var err error
 	rw := new(redisWriter)
+	rw.notifier = notifier
 	rw.client, err = client.NewRedisClient(address, username, password, isTls)
 	log.Infof("redisWriter connected to redis successful. address=[%s]", address)
 	rw.cmdBuffer = new(bytes.Buffer)
@@ -87,6 +89,9 @@ func (w *redisWriter) flushInterval() {
 		}
 		if strings.EqualFold(e.CmdName, "select") { // skip select command
 			continue
+		}
+		if w.notifier != nil && err == nil {
+			w.notifier.Notify("reply", e.Id)
 		}
 		atomic.AddUint64(&w.UpdateUnansweredBytesCount, ^(e.EncodedSize - 1))
 		statistics.UpdateAOFAppliedOffset(uint64(e.Offset))
