@@ -25,7 +25,9 @@ func NewRedisClusterWriter(address string, username string, password string, isT
 	log.Infof("redisClusterWriter connected to redis cluster successful. addresses=%v", rw.addresses)
 	return rw
 }
-
+func (r *RedisClusterWriter) DoWithReply(args ...string) (interface{}, error) {
+	return nil, nil
+}
 func (r *RedisClusterWriter) loadClusterNodes(address string, username string, password string, isTls bool) {
 	client_, _ := client.NewRedisClient(address, username, password, isTls)
 	reply, _ := client_.DoWithStringReply("cluster", "nodes")

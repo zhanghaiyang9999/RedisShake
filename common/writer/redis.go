@@ -39,7 +39,9 @@ func NewRedisWriter(address string, username string, password string, isTls bool
 	go rw.flushInterval()
 	return rw, err
 }
-
+func (w *redisWriter) DoWithReply(args ...string) (interface{}, error) {
+	return w.client.DoWithReply(args...)
+}
 func (w *redisWriter) Write(e *entry.Entry) error {
 	// switch db if we need
 	if w.DbId != e.DbId {
