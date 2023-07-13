@@ -29,13 +29,17 @@ type psyncReader struct {
 	//rdb file name
 	workFolder string
 	notifier   rdb.ReadNotifier
+	runid      string
+	offset     string
 }
 
-func NewPSyncReader(address string, username string, password string, isTls bool, ElastiCachePSync string) (Reader, error) {
+func NewPSyncReader(address string, username string, password string, isTls bool, ElastiCachePSync string, runid string, offset string) (Reader, error) {
 	var err error
 	r := new(psyncReader)
 	r.address = address
 	r.elastiCachePSync = ElastiCachePSync
+	r.runid = runid
+	r.offset = offset
 	r.client, err = client.NewRedisClient(address, username, password, isTls)
 	if err != nil {
 		return r, err
@@ -62,11 +66,13 @@ func (r *psyncReader) StartRead(notifier rdb.ReadNotifier) chan *entry.Entry {
 	go func() {
 		r.clearDir()
 		go r.sendReplconfAck()
-		r.saveRDB()
+		err, sendrdb := r.saveRDB()
 		startOffset := r.receivedOffset
 		go r.saveAOF(r.rd)
-		r.sendRDB()
-		time.Sleep(1 * time.Second) // wait for saveAOF create aof file
+		if err == nil && sendrdb {
+			r.sendRDB()
+		}
+		time.Sleep(10 * time.Second) // wait for saveAOF create aof file
 		r.sendAOF(startOffset)
 	}()
 
@@ -90,7 +96,7 @@ func (r *psyncReader) clearDir() {
 	}
 }
 
-func (r *psyncReader) saveRDB() error {
+func (r *psyncReader) saveRDB() (error, bool) {
 	log.Infof("start save RDB. address=[%s]", r.address)
 	argv := []string{"replconf", "listening-port", "10007"} // 10007 is magic number
 	log.Infof("send %v", argv)
@@ -100,14 +106,14 @@ func (r *psyncReader) saveRDB() error {
 	}
 
 	// send psync
-	argv = []string{"PSYNC", "?", "-1"}
+	argv = []string{"PSYNC", r.runid, r.offset}
 	if r.elastiCachePSync != "" {
 		argv = []string{r.elastiCachePSync, "?", "-1"}
 	}
 	r.client.Send(argv...)
 	log.Infof("send %v", argv)
 	// format: \n\n\n$<reply>\r\n
-	for true {
+	for {
 		if r.notifier.IsStopped() {
 			break
 		}
@@ -122,25 +128,33 @@ func (r *psyncReader) saveRDB() error {
 		if b == '-' {
 			reply, err := r.rd.ReadString('\n')
 			if err != nil {
-				return err
+				return err, false
 			}
 			reply = strings.TrimSpace(reply)
-			return errors.New(reply)
+			return errors.New(reply), false
 		}
 		if b != '+' {
-			return errors.New("invalid rdb format:" + string(b))
+			return errors.New("invalid rdb format:" + string(b)), false
 		}
 		break
 	}
 	reply, err := r.rd.ReadString('\n')
 	if err != nil {
-		return err
+		return err, false
 	}
 	reply = strings.TrimSpace(reply)
+	masterOffset, err := 0, nil
+	runid := ""
 	log.Infof("receive [%s]", reply)
-	masterOffset, err := strconv.Atoi(strings.Split(reply, " ")[2])
-	if err != nil {
-		return err
+	if reply != "CONTINUE" {
+		masterOffset, err = strconv.Atoi(strings.Split(reply, " ")[2])
+		if err != nil {
+			return err, false
+		}
+		runid = strings.Split(reply, " ")[1]
+	} else {
+		r.receivedOffset, _ = strconv.ParseInt(r.offset, 10, 64)
+		return nil, false
 	}
 	r.receivedOffset = int64(masterOffset)
 
@@ -149,20 +163,20 @@ func (r *psyncReader) saveRDB() error {
 
 	timeStart := time.Now()
 	// format: \n\n\n$<length>\r\n<rdb>
-	for true {
+	for {
 		if r.notifier.IsStopped() {
 			break
 		}
 		// \n\n\n$
 		b, err := r.rd.ReadByte()
 		if err != nil {
-			return err
+			return err, false
 		}
 		if b == '\n' {
 			continue
 		}
 		if b != '$' {
-			return errors.New("invalid rdb format:" + string(b))
+			return errors.New("invalid rdb format:" + string(b)), false
 		}
 		break
 	}
@@ -170,12 +184,12 @@ func (r *psyncReader) saveRDB() error {
 	log.Infof("source db bgsave finished. timeUsed=[%.2f]s, address=[%s]", time.Since(timeStart).Seconds(), r.address)
 	lengthStr, err := r.rd.ReadString('\n')
 	if err != nil {
-		return err
+		return err, false
 	}
 	lengthStr = strings.TrimSpace(lengthStr)
 	length, err := strconv.ParseInt(lengthStr, 10, 64)
 	if err != nil {
-		return err
+		return err, false
 	}
 	log.Infof("received rdb length. length=[%d]", length)
 	statistics.SetRDBFileSize(uint64(length))
@@ -188,7 +202,7 @@ func (r *psyncReader) saveRDB() error {
 	log.Infof("create dump.rdb file. filename_path=[%s]", rdbFilePath)
 	rdbFileHandle, err := os.OpenFile(rdbFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return err
+		return err, false
 	}
 
 	// read rdb
@@ -206,22 +220,25 @@ func (r *psyncReader) saveRDB() error {
 		n, err := r.rd.Read(buf[:readOnce])
 		if err != nil {
 			rdbFileHandle.Close()
-			return err
+			return err, false
 		}
 		remainder -= int64(n)
 		statistics.UpdateRDBReceivedSize(uint64(length - remainder))
 		_, err = rdbFileHandle.Write(buf[:n])
 		if err != nil {
 			rdbFileHandle.Close()
-			return err
+			return err, false
 		}
 	}
 	err = rdbFileHandle.Close()
 	if err != nil {
-		return err
+		return err, false
+	}
+	if r.notifier != nil {
+		r.notifier.Notify("runid", runid, r.receivedOffset)
 	}
 	log.Infof("save RDB finished. address=[%s], total_bytes=[%d]", r.address, length)
-	return nil
+	return nil, true
 }
 
 func (r *psyncReader) saveAOF(rd io.Reader) error {
@@ -274,9 +291,7 @@ func (r *psyncReader) sendAOF(offset int64) {
 		}
 		argv, err := client.ArrayString(r.client.Receive())
 		if err != nil {
-			e := entry.NewEntry()
-			r.ch <- e
-			break
+			continue
 		}
 		// select
 		if strings.EqualFold(argv[0], "select") {
