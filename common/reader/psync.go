@@ -314,6 +314,9 @@ func (r *psyncReader) sendAOF(offset int64) {
 func (r *psyncReader) sendReplconfAck() {
 	for range time.Tick(time.Millisecond * 100) {
 		// send ack receivedOffset
+		if r.notifier.IsStopped() {
+			return
+		}
 		r.client.Send("replconf", "ack", strconv.FormatInt(r.receivedOffset, 10))
 	}
 }
